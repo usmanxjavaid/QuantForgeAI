@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quantforgeai"
+version = "0.1.0"
+description = "AI-powered financial research and paper-trading platform"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+
+dependencies = [
+    "ccxt",
+    "pandas",
+    "numpy",
+    "pyarrow",
+    "pydantic",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.setuptools.packages.find]
+include = ["backend*"]
