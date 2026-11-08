@@ -27,11 +27,11 @@ def run_backtest(
     A signal calculated at candle t's close is executed at candle t+1's
     open. Positions are marked to market at each candle's close.
 
-    The portfolio uses fractional BTC units and invests all available cash
+    The portfolio uses fractional asset units and invests all available cash
     when entering a position. Buys and sells both incur fees.
 
-    The buy-and-hold benchmark buys at the first candle's open and values
-    the resulting position at the final candle's close.
+    The buy-and-hold benchmark buys at the first candle's open, pays
+    the entry fee, and values the position at each candle's close.
     """
     required = {"open", "close", "target_position"}
     missing = required - set(data.columns)
@@ -84,7 +84,6 @@ def run_backtest(
     count = len(result)
     cash = float(initial_capital)
     units = 0.0
-    in_trade = False
     entry_cost = 0.0
     closed_trade_returns: list[float] = []
 
@@ -92,6 +91,7 @@ def run_backtest(
     position_values: list[int] = []
     fee_values: list[float] = []
     trade_events: list[str] = []
+    closed_trade_return_values: list[float | None] = []
 
     for i in range(count):
         # A signal from the previous candle is actionable at this open.
@@ -99,6 +99,7 @@ def run_backtest(
         execution_price = opens[i]
         fees_paid = 0.0
         event = "HOLD"
+        closed_trade_return: float | None = None
 
         currently_long = units > 0
 
@@ -108,7 +109,6 @@ def run_backtest(
             fees_paid = units * execution_price * fee_rate
             entry_cost = units * execution_price + fees_paid
             cash = 0.0
-            in_trade = True
             event = "BUY"
 
         elif desired_position == 0 and currently_long:
@@ -117,11 +117,11 @@ def run_backtest(
             cash = proceeds_before_fee - fees_paid
 
             trade_return = cash / entry_cost - 1.0
-            closed_trade_returns.append(float(trade_return))
+            closed_trade_return = float(trade_return)
+            closed_trade_returns.append(closed_trade_return)
 
             units = 0.0
             entry_cost = 0.0
-            in_trade = False
             event = "SELL"
 
         # Mark the portfolio to market at this candle's close.
@@ -131,11 +131,13 @@ def run_backtest(
         position_values.append(int(units > 0))
         fee_values.append(float(fees_paid))
         trade_events.append(event)
+        closed_trade_return_values.append(closed_trade_return)
 
     result["position"] = position_values
     result["fees"] = fee_values
     result["trade_event"] = trade_events
     result["equity"] = equity_values
+    result["closed_trade_return"] = closed_trade_return_values
 
     previous_equity = result["equity"].shift(1)
     previous_equity.iloc[0] = initial_capital
@@ -150,9 +152,10 @@ def run_backtest(
     max_drawdown = float(result["drawdown"].min())
 
     # Buy-and-hold benchmark: buy at the first open, pay the entry fee,
-    # and value the remaining BTC at the last close.
+    # and value the remaining asset at every candle's close.
     benchmark_units = initial_capital / (opens[0] * (1.0 + fee_rate))
-    benchmark_final_equity = benchmark_units * closes[-1]
+    result["benchmark_equity"] = benchmark_units * result["close"]
+    benchmark_final_equity = float(result["benchmark_equity"].iloc[-1])
     buy_hold_return = benchmark_final_equity / initial_capital - 1.0
 
     trade_count = len(closed_trade_returns)
@@ -162,10 +165,6 @@ def run_backtest(
         if trade_count
         else 0.0
     )
-
-    # An open position at the end remains in final equity but is not
-    # counted as a completed trade for win-rate purposes.
-    _ = in_trade
 
     return BacktestResult(
         initial_capital=float(initial_capital),
