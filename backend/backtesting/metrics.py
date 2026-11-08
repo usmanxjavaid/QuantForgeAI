@@ -1,9 +1,9 @@
 
 """Performance metrics for QuantForgeAI backtests."""
 
-from dataclasses import dataclass
 import math
 import sys
+from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd

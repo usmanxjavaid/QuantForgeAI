@@ -57,20 +57,27 @@ def test_strategy_sorts_candles_by_timestamp():
 
 
 @pytest.mark.parametrize(
-    ("fast_period", "slow_period"),
+    ("fast_period", "slow_period", "expected_exception"),
     [
-        (0, 5),
-        (2, 0),
-        (-1, 5),
-        (5, 5),
-        (6, 5),
-        (True, 5),
+        (0, 5, ValueError),
+        (2, 0, ValueError),
+        (-1, 5, ValueError),
+        (5, 5, ValueError),
+        (6, 5, ValueError),
+        (True, 5, TypeError),
+        ("2", 5, TypeError),
+        (2.5, 5, TypeError),
+        (2, False, TypeError),
     ],
 )
-def test_strategy_rejects_invalid_periods(fast_period, slow_period):
+def test_strategy_rejects_invalid_periods(
+    fast_period,
+    slow_period,
+    expected_exception,
+):
     candles = pd.DataFrame({"close": [10.0, 11.0, 12.0]})
 
-    with pytest.raises(ValueError):
+    with pytest.raises(expected_exception):
         moving_average_strategy(
             candles,
             fast_period=fast_period,

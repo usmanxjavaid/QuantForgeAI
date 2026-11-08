@@ -1,3 +1,4 @@
+
 import numpy as np
 import pandas as pd
 
@@ -133,8 +134,8 @@ def calculate_indicators(
     for name, period in periods.items():
         try:
             _validate_period(period)
-        except ValueError as exc:
-            raise ValueError(f"{name}: {exc}") from exc
+        except (TypeError, ValueError) as exc:
+            raise type(exc)(f"{name}: {exc}") from exc
 
     result = candles.copy()
 
@@ -183,7 +184,7 @@ def calculate_indicators(
 
 def _validate_period(period: int) -> None:
     if isinstance(period, bool) or not isinstance(period, int):
-        raise ValueError("period must be a positive integer")
+        raise TypeError("period must be a positive integer")
 
     if period < 1:
         raise ValueError("period must be a positive integer")

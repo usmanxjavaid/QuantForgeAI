@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pandas as pd
 import pytest
@@ -14,7 +14,7 @@ def make_candles() -> list[Candle]:
                 2026,
                 1,
                 1,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
             exchange="binance",
             market_type="spot",
@@ -32,7 +32,7 @@ def make_candles() -> list[Candle]:
                 1,
                 1,
                 1,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
             exchange="binance",
             market_type="spot",
@@ -70,12 +70,12 @@ def test_candle_rejects_invalid_timeframe() -> None:
                 2026,
                 1,
                 1,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
             exchange="binance",
             market_type="spot",
             symbol="BTC/USDT",
-            timeframe="2h",
+            timeframe="0h",
             open=100,
             high=110,
             low=95,
@@ -91,7 +91,7 @@ def test_candle_rejects_invalid_ohlc_relationship() -> None:
                 2026,
                 1,
                 1,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
             exchange="binance",
             market_type="spot",
@@ -112,7 +112,7 @@ def test_candle_rejects_futures_style_symbol() -> None:
                 2026,
                 1,
                 1,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
             exchange="binance",
             market_type="spot",
