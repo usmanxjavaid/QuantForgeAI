@@ -2,7 +2,11 @@
 import pandas as pd
 import pytest
 
-from backend.strategies import moving_average_strategy
+from backend.strategies import (
+    MovingAverageStrategy,
+    Strategy,
+    moving_average_strategy,
+)
 
 
 def test_strategy_stays_in_cash_until_slow_average_is_available():
@@ -16,7 +20,6 @@ def test_strategy_stays_in_cash_until_slow_average_is_available():
         slow_period=3,
     )
 
-    # The slow average needs three candles before it can be calculated.
     assert result["target_position"].tolist() == [0, 0, 1, 1, 1, 1]
     assert result["fast_sma"].iloc[2] > result["slow_sma"].iloc[2]
 
@@ -75,11 +78,8 @@ def test_strategy_rejects_invalid_periods(
     slow_period,
     expected_exception,
 ):
-    candles = pd.DataFrame({"close": [10.0, 11.0, 12.0]})
-
     with pytest.raises(expected_exception):
-        moving_average_strategy(
-            candles,
+        MovingAverageStrategy(
             fast_period=fast_period,
             slow_period=slow_period,
         )
@@ -101,3 +101,81 @@ def test_strategy_rejects_invalid_close_prices():
             fast_period=1,
             slow_period=2,
         )
+
+
+def test_moving_average_strategy_implements_strategy_protocol():
+    strategy = MovingAverageStrategy(
+        fast_period=2,
+        slow_period=3,
+    )
+
+    assert isinstance(strategy, Strategy)
+
+
+def test_class_generates_expected_signals():
+    candles = pd.DataFrame({
+        "close": [10.0, 11.0, 12.0, 13.0, 14.0, 15.0],
+    })
+
+    strategy = MovingAverageStrategy(
+        fast_period=2,
+        slow_period=3,
+    )
+
+    result = strategy.generate_signals(candles)
+
+    assert result["target_position"].tolist() == [0, 0, 1, 1, 1, 1]
+
+
+def test_class_and_legacy_function_generate_identical_results():
+    candles = pd.DataFrame({
+        "close": [10.0, 11.0, 12.0, 11.0, 13.0, 15.0, 14.0],
+    })
+
+    strategy = MovingAverageStrategy(
+        fast_period=2,
+        slow_period=3,
+    )
+
+    class_result = strategy.generate_signals(candles)
+
+    function_result = moving_average_strategy(
+        candles,
+        fast_period=2,
+        slow_period=3,
+    )
+
+    pd.testing.assert_frame_equal(class_result, function_result)
+
+
+def test_strategy_configuration_is_immutable():
+    strategy = MovingAverageStrategy(
+        fast_period=2,
+        slow_period=3,
+    )
+
+    with pytest.raises(AttributeError):
+        strategy.fast_period = 5
+
+
+def test_strategy_class_does_not_modify_input_data():
+    candles = pd.DataFrame({
+        "close": [10.0, 11.0, 12.0, 13.0, 14.0],
+    })
+    original = candles.copy(deep=True)
+
+    strategy = MovingAverageStrategy(
+        fast_period=2,
+        slow_period=3,
+    )
+
+    strategy.generate_signals(candles)
+
+    pd.testing.assert_frame_equal(candles, original)
+
+
+def test_strategy_uses_default_configuration():
+    strategy = MovingAverageStrategy()
+
+    assert strategy.fast_period == 20
+    assert strategy.slow_period == 50

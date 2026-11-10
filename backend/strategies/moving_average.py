@@ -1,6 +1,30 @@
 
+from dataclasses import dataclass
+
 import numpy as np
 import pandas as pd
+
+
+@dataclass(frozen=True)
+class MovingAverageStrategy:
+    """Long-or-cash strategy based on two simple moving averages."""
+
+    fast_period: int = 20
+    slow_period: int = 50
+
+    def __post_init__(self) -> None:
+        _validate_periods(self.fast_period, self.slow_period)
+
+    def generate_signals(
+        self,
+        candles: pd.DataFrame,
+    ) -> pd.DataFrame:
+        """Generate long-or-cash targets from moving-average direction."""
+        return _generate_signals(
+            candles,
+            fast_period=self.fast_period,
+            slow_period=self.slow_period,
+        )
 
 
 def moving_average_strategy(
@@ -8,23 +32,21 @@ def moving_average_strategy(
     fast_period: int = 20,
     slow_period: int = 50,
 ) -> pd.DataFrame:
-    """Generate long-or-cash targets from moving-average trend direction.
+    """Backward-compatible function interface for the moving-average strategy."""
+    strategy = MovingAverageStrategy(
+        fast_period=fast_period,
+        slow_period=slow_period,
+    )
 
-    The target is calculated using each candle's close. The backtester
-    must delay execution so that this close is not used retroactively.
-    """
-    if isinstance(fast_period, bool) or not isinstance(fast_period, int):
-        raise TypeError("fast_period must be a positive integer")
+    return strategy.generate_signals(candles)
 
-    if isinstance(slow_period, bool) or not isinstance(slow_period, int):
-        raise TypeError("slow_period must be a positive integer")
 
-    if fast_period < 1 or slow_period < 1:
-        raise ValueError("Moving-average periods must be positive")
-
-    if fast_period >= slow_period:
-        raise ValueError("fast_period must be smaller than slow_period")
-
+def _generate_signals(
+    candles: pd.DataFrame,
+    fast_period: int,
+    slow_period: int,
+) -> pd.DataFrame:
+    """Shared implementation used by the class and compatibility wrapper."""
     if "close" not in candles.columns:
         raise ValueError("Input data must contain a close column")
 
@@ -58,3 +80,22 @@ def moving_average_strategy(
     ).astype(int)
 
     return result
+
+
+def _validate_periods(
+    fast_period: int,
+    slow_period: int,
+) -> None:
+    """Validate moving-average configuration."""
+
+    if isinstance(fast_period, bool) or not isinstance(fast_period, int):
+        raise TypeError("fast_period must be a positive integer")
+
+    if isinstance(slow_period, bool) or not isinstance(slow_period, int):
+        raise TypeError("slow_period must be a positive integer")
+
+    if fast_period < 1 or slow_period < 1:
+        raise ValueError("Moving-average periods must be positive")
+
+    if fast_period >= slow_period:
+        raise ValueError("fast_period must be smaller than slow_period")
